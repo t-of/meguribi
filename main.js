@@ -124,6 +124,20 @@ for (const f of MAP.insets) {
 // 外枠（地図の単位）
 const bboxOf = (el) => { const b = el.getBBox(); return { x: b.x, y: b.y, w: b.width, h: b.height }; };
 const prefBoxes = prefEls.map(bboxOf);
+// 東京都の外枠だけ、小笠原村（南へ移して描いている）を除いて測り直す。
+// 入れたままだと「東京都」だけを選んだときに、外枠が小笠原の位置まで広がってしまう
+// （小笠原村以外は、県ごとまとめて移した沖縄県も含め、県の中で位置がバラけないのでこの問題は起きない）。
+(() => {
+  const OGA_CODE = '13421';
+  const mainTokyo = cities.filter((c) => c.pid === 13 && c.code !== OGA_CODE).map((c) => c.d).join('');
+  if (!mainTokyo) return;
+  const tmp = document.createElementNS(SVGNS, 'path');
+  tmp.setAttribute('d', mainTokyo);
+  tmp.style.visibility = 'hidden';
+  $('land').appendChild(tmp);
+  prefBoxes[12] = bboxOf(tmp); // pid 13 = 配列の添字 12
+  $('land').removeChild(tmp);
+})();
 function unionBox(boxes) {
   const x0 = Math.min(...boxes.map((b) => b.x)), y0 = Math.min(...boxes.map((b) => b.y));
   const x1 = Math.max(...boxes.map((b) => b.x + b.w)), y1 = Math.max(...boxes.map((b) => b.y + b.h));
