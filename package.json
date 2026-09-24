@@ -1,0 +1,9 @@
+{
+  "name": "meguribi",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "map": "node tools/make-map.mjs"
+  }
+}

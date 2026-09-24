@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1224">
+  <meta name="description" content="日本地図の上を灯りが町から町へかけめぐり、止めたところが次の旅先になる。全国 1,747 の市区町村から、地方や県でしぼったり、行った県を外したりして選べる。">
+  <title>めぐりび — 灯りが止まった町へ行く</title>
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="めぐりび">
+  <meta property="og:title" content="めぐりび — 灯りが止まった町へ行く">
+  <meta property="og:description" content="日本地図の上を灯りが町から町へかけめぐり、止めたところが次の旅先になる。全国 1,747 の市区町村から、地方や県でしぼったり、行った県を外したりして選べる。">
+  <meta property="og:url" content="https://t-of.github.io/meguribi/">
+  <meta property="og:image" content="https://t-of.github.io/meguribi/icons/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:locale" content="ja_JP">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <!-- apple-mobile-web-app-status-bar-style は付けない（black-translucent だと iOS 26 で上部が隠れる） -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="めぐりび">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+  <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+
+  <link rel="stylesheet" href="./webapp-kit/webapp-kit.css">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <svg class="map" id="map" role="img" aria-label="日本地図">
+    <defs>
+      <pattern id="hatch" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <rect width="3" height="3" class="hatch-bg"/>
+        <line x1="0" y1="0" x2="0" y2="3" class="hatch-line"/>
+      </pattern>
+    </defs>
+    <g id="land"></g>
+    <path id="borders" class="borders"/>
+    <path id="prefLines" class="pref-lines"/>
+    <g id="insets"></g>
+    <path id="lit" class="lit"/>
+    <g id="spot" class="spot" hidden>
+      <circle r="16" class="spot__halo"/>
+      <circle r="7" class="spot__halo"/>
+      <circle r="3" class="spot__core"/>
+    </g>
+    <g id="rings" class="rings" hidden>
+      <circle r="34" class="ring"/>
+      <circle r="34" class="ring ring--late"/>
+    </g>
+  </svg>
+
+  <header class="bar">
+    <h1 class="bar__title">めぐりび</h1>
+    <div class="bar__actions">
+      <button class="icon-btn" id="soundBtn" type="button" aria-label="音" aria-pressed="true">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5v14l-4.5-4.5H4z" fill="currentColor"/><path class="sound-wave" d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="sound-off" d="M15.5 9l6 6m0-6l-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <button class="scope-btn" id="scopeBtn" type="button" aria-haspopup="dialog">
+        <span class="scope-btn__name" id="scopeName">全国</span>
+        <span class="scope-btn__left" id="scopeLeft">のこり 1,747</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="howto" id="howto" hidden>
+    <ol>
+      <li>「まわす」を押すと、地図の上を灯りが町から町へ飛び回る。</li>
+      <li>「とめる」（地図のどこでも）を押すと、だんだんゆっくりになって、1 つの町で止まる。そこが次の旅先。</li>
+      <li>範囲を「全国・地方・県」でしぼれる。行った県に印を付けると、その県の町は出てこない。</li>
+    </ol>
+    <p class="howto__tap">タップではじめる</p>
+  </div>
+
+  <div class="dock" id="dock">
+    <p class="ticker" id="ticker" aria-hidden="true"></p>
+    <p class="empty" id="empty" hidden>全部行った！</p>
+    <button class="spin" id="spinBtn" type="button">まわす</button>
+    <nav class="links">
+      <button class="link" data-wak="install" hidden>アプリにする</button>
+      <button class="link" data-wak="share">共有</button>
+      <a class="link" href="/">T.OF... のアプリ</a>
+      <button class="link" id="creditBtn" type="button">出典: 国土交通省</button>
+    </nav>
+  </div>
+
+  <section class="card" id="card" hidden aria-live="polite">
+    <button class="card__grip" id="gripBtn" type="button" aria-label="たたむ"></button>
+    <p class="card__pref" id="resPref"></p>
+    <p class="card__name" id="resName"></p>
+    <p class="card__kana" id="resKana"></p>
+    <div class="card__actions">
+      <button class="spin spin--again" id="againBtn" type="button">もう一度</button>
+      <div class="card__row">
+        <button class="pill" id="shareBtn" type="button">共有</button>
+        <a class="pill" id="mapLink" target="_blank" rel="noopener">地図アプリで見る ↗</a>
+      </div>
+    </div>
+  </section>
+
+  <dialog class="sheet" id="sheet" aria-labelledby="sheetTitle">
+    <div class="sheet__head">
+      <div>
+        <h2 id="sheetTitle">しぼる</h2>
+        <p class="left" id="sheetLeft"></p>
+      </div>
+      <button class="pill" id="sheetClose" type="button">閉じる</button>
+    </div>
+    <div class="sheet__body">
+      <div class="chips" id="regionChips"></div>
+      <div class="chips chips--sub" id="prefChips"></div>
+      <h2>行った県 <small>押すと、その県の町は出てこない</small></h2>
+      <div id="visitedList"></div>
+      <div class="sheet__foot">
+        <button class="pill" id="clearVisited" type="button">全部はずす</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="credit" id="credit" aria-labelledby="creditTitle">
+    <div class="credit__in">
+    <h2 id="creditTitle">出典</h2>
+    <p>市区町村と都道府県の形: 「<a href="https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N03-2026.html" target="_blank" rel="noopener">国土数値情報（行政区域データ）</a>」（国土交通省）2026 年（令和 8 年）版を加工して作成</p>
+    <p>よみ・役場の位置: <a href="https://github.com/code4fukui/localgovjp" target="_blank" rel="noopener">code4fukui/localgovjp</a>（CC0）</p>
+    <p class="credit__note">境界は簡略化しています。沖縄県と小笠原諸島は位置を移して描いています。</p>
+    <form method="dialog"><button class="pill">閉じる</button></form>
+    </div>
+  </dialog>
+
+  <script src="./webapp-kit/webapp-kit.js"></script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
